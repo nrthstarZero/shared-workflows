@@ -1,0 +1,153 @@
+name: Claude Code Review
+
+on:
+  workflow_call:
+    inputs:
+      project_docs:
+        description: 'Space-separated list of project doc files to read (e.g., "CLAUDE.md CLAUDE.react.md")'
+        required: false
+        type: string
+        default: 'CLAUDE.md'
+      review_criteria:
+        description: 'Additional review criteria to append (markdown list items)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are reviewing PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+
+            ## Steps
+
+            1. Run `gh pr view ${{ github.event.pull_request.number }}` to understand the PR description and context.
+            2. Run `gh pr view ${{ github.event.pull_request.number }} --json reviews --jq '.reviews[].body'` to read all previous review comments on this PR.
+            3. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the full diff.
+            4. Read the changed files in full when you need more context beyond the diff.
+            5. Read the following project convention files (if they exist): ${{ inputs.project_docs }}
+            6. Cross-reference the current diff against previous reviews — identify which previously flagged issues have been fixed and which remain.
+            7. Perform your review following the criteria below.
+            8. Submit your review using `gh pr review`.
+
+            ## Previous Review Awareness
+
+            You MUST check previous reviews on this PR before submitting yours. In your review body:
+            - Include a **Previously Flagged** section that lists issues from prior reviews and their status (✅ Fixed or ⏳ Still Open).
+            - Do NOT re-flag issues that have already been fixed in the current diff.
+            - If all previous issues are resolved, acknowledge this briefly.
+            - Focus your new findings on issues not previously identified.
+
+            ## Review Criteria (in priority order)
+
+            1. **Correctness** — Bugs, logic errors, race conditions, off-by-one errors
+            2. **Security** — Injection, auth issues, exposed secrets, unsafe data handling
+            3. **Architecture** — Component structure, separation of concerns
+            4. **Code Standards** — Naming, documentation, file organization
+            5. **Performance** — Unnecessary computation, missing optimization opportunities
+            6. **Error Handling** — Missing error states, silent failures, unhandled promise rejections
+            7. **Test Coverage** — Are new features/logic covered by tests?
+            ${{ inputs.review_criteria }}
+
+            ## Review Guidelines
+
+            - **Be specific**: Reference file names, line numbers, and code snippets.
+            - **Be actionable**: Every comment should suggest a fix or ask a clarifying question.
+            - **Skip nitpicks**: Don't comment on formatting, trivial style preferences, or things a linter would catch.
+            - **Acknowledge good work**: Call out clever solutions or well-structured code briefly.
+            - **Scale your response**: Small PRs get brief reviews. Large PRs get thorough ones.
+
+            ## Submitting the Review
+
+            You MUST submit an actual GitHub review (not a comment). Use `gh pr review ${{ github.event.pull_request.number }}` with one of these flags:
+
+            - `--approve` — Use this when there are NO 🔴 issues. 🟡 and 🟢 suggestions are fine in an approval.
+            - `--request-changes` — Use this when there are ANY 🔴 issues (bugs, security, correctness).
+
+            NEVER use `--comment`. Always either approve or request changes — take a clear stance.
+
+            IMPORTANT: Pass the review body via a heredoc so markdown renders correctly:
+
+            ```
+            gh pr review NUMBER --approve --body "$(cat <<'REVIEW_EOF'
+            Your markdown review here...
+            REVIEW_EOF
+            )"
+            ```
+
+            ## Review Output Format
+
+            You MUST structure your review body using this exact markdown format:
+
+            ```markdown
+            ## Summary
+
+            One sentence overview of the PR quality.
+
+            ## Previously Flagged
+
+            | Issue | Status |
+            |-------|--------|
+            | Description of previous issue | ✅ Fixed |
+            | Description of previous issue | ⏳ Still Open |
+
+            _(If no previous reviews exist, omit this section.)_
+
+            ## Issues
+
+            ### 🔴 Bug: Short title (`filename.tsx`)
+
+            Description of the bug with specific line references.
+
+            **Suggestion:** What to do instead, with a code snippet if helpful.
+
+            ---
+
+            ### 🟡 UX: Short title (`filename.tsx`)
+
+            Description of the UX concern.
+
+            **Suggestion:** Recommended fix.
+
+            ---
+
+            ### 🟢 Minor: Short title (`filename.tsx`)
+
+            Description of the minor issue.
+
+            **Suggestion:** Quick fix.
+
+            ## What looks good
+
+            - Brief callout of things done well
+            ```
+
+            Severity prefixes:
+            - 🔴 for bugs, security issues, correctness problems
+            - 🟡 for UX issues, architectural concerns, missing error handling
+            - 🟢 for minor suggestions, style improvements, nice-to-haves
+
+            Use `---` horizontal rules between issues for visual separation. Use backtick code references for files, functions, and variables. Include short code snippets in fenced blocks when suggesting fixes. If no issues found, just write a short "Looks good" summary.
+
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr review:*)"'
