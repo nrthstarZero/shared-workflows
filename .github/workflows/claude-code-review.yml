@@ -7,12 +7,27 @@ on:
         description: 'Space-separated list of project doc files to read (e.g., "CLAUDE.md CLAUDE.react.md")'
         required: false
         type: string
-        default: 'CLAUDE.md'
+        default: "CLAUDE.md"
       review_criteria:
-        description: 'Additional review criteria to append (markdown list items)'
+        description: "Additional review criteria to append (markdown list items)"
         required: false
         type: string
-        default: ''
+        default: ""
+      block_on_yellow:
+        description: "Whether 🟡 issues should also trigger request-changes (default: false, only 🔴 blocks)"
+        required: false
+        type: boolean
+        default: false
+      model:
+        description: 'Claude model to use (e.g., "claude-sonnet-4-6" for speed, "claude-opus-4-6" for depth)'
+        required: false
+        type: string
+        default: "claude-sonnet-4-6"
+      timeout_minutes:
+        description: "Maximum minutes before the review job is cancelled (default: 15)"
+        required: false
+        type: number
+        default: 15
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
@@ -20,6 +35,7 @@ on:
 jobs:
   claude-review:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
     permissions:
       contents: read
       pull-requests: write
@@ -43,13 +59,14 @@ jobs:
             ## Steps
 
             1. Run `gh pr view ${{ github.event.pull_request.number }}` to understand the PR description and context.
-            2. Run `gh pr view ${{ github.event.pull_request.number }} --json reviews --jq '.reviews[].body'` to read all previous review comments on this PR.
-            3. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the full diff.
-            4. Read the changed files in full when you need more context beyond the diff.
-            5. Read the following project convention files (if they exist): ${{ inputs.project_docs }}
-            6. Cross-reference the current diff against previous reviews — identify which previously flagged issues have been fixed and which remain.
-            7. Perform your review following the criteria below.
-            8. Submit your review using `gh pr review`.
+            2. Run `gh pr view ${{ github.event.pull_request.number }} --json reviews --jq '.reviews[].body'` to read all previous review bodies.
+            3. Run `gh pr view ${{ github.event.pull_request.number }} --json reviewThreads --jq '.reviewThreads[].comments[].body'` to read all previous inline review comments.
+            4. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the full diff.
+            5. Read the changed files in full when you need more context beyond the diff.
+            6. Read the following project convention files (if they exist): ${{ inputs.project_docs }}
+            7. Cross-reference the current diff against previous reviews (both review bodies and inline comments) — identify which previously flagged issues have been fixed and which remain.
+            8. Perform your review following the criteria below.
+            9. Submit your review using `gh pr review`, including inline comments on specific lines for 🔴 and 🟡 issues.
 
             ## Previous Review Awareness
 
@@ -82,8 +99,13 @@ jobs:
 
             You MUST submit an actual GitHub review (not a comment). Use `gh pr review ${{ github.event.pull_request.number }}` with one of these flags:
 
-            - `--approve` — Use this when there are NO 🔴 issues. 🟡 and 🟢 suggestions are fine in an approval.
-            - `--request-changes` — Use this when there are ANY 🔴 issues (bugs, security, correctness).
+            - `--approve` — Use this when there are NO blocking issues (see severity rules below).
+            - `--request-changes` — Use this when there ARE blocking issues.
+
+            Severity rules for blocking:
+            - 🔴 issues ALWAYS block (request-changes).
+            - 🟡 issues block ONLY if `block_on_yellow` is enabled: ${{ inputs.block_on_yellow }}
+            - 🟢 issues never block.
 
             NEVER use `--comment`. Always either approve or request changes — take a clear stance.
 
@@ -96,6 +118,22 @@ jobs:
             )"
             ```
 
+            ## Inline Comments
+
+            In addition to the review body, you MUST post inline comments on specific diff lines for every 🔴 and 🟡 issue. Use the GitHub CLI:
+
+            ```
+            gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments \
+              -f body="🔴 **Bug: Short title**
+
+            Description and suggestion." \
+              -f path="src/filename.tsx" \
+              -F line=42 \
+              -f side="RIGHT"
+            ```
+
+            This makes issues appear directly in the diff where authors will see them. Only use this for issues where you can identify a specific file and line number.
+
             ## Review Output Format
 
             You MUST structure your review body using this exact markdown format:
@@ -104,6 +142,8 @@ jobs:
             ## Summary
 
             One sentence overview of the PR quality.
+
+            **Verdict:** ✅ Approve _(or ❌ Request Changes — N critical issues)_
 
             ## Previously Flagged
 
@@ -116,31 +156,50 @@ jobs:
 
             ## Issues
 
-            ### 🔴 Bug: Short title (`filename.tsx`)
+            | # | Severity | Category | File | Line | Title |
+            |---|----------|----------|------|------|-------|
+            | 1 | 🔴 | Bug | `filename.tsx` | L42 | Short title |
+            | 2 | 🟡 | UX | `filename.tsx` | L108 | Short title |
+            | 3 | 🟢 | Minor | `filename.tsx` | L15 | Short title |
+
+            <details>
+            <summary><strong>1. 🔴 Bug: Short title</strong> — <code>filename.tsx:42</code></summary>
 
             Description of the bug with specific line references.
 
             **Suggestion:** What to do instead, with a code snippet if helpful.
 
-            ---
+            </details>
 
-            ### 🟡 UX: Short title (`filename.tsx`)
+            <details>
+            <summary><strong>2. 🟡 UX: Short title</strong> — <code>filename.tsx:108</code></summary>
 
             Description of the UX concern.
 
             **Suggestion:** Recommended fix.
 
-            ---
+            </details>
 
-            ### 🟢 Minor: Short title (`filename.tsx`)
+            <details>
+            <summary><strong>3. 🟢 Minor: Short title</strong> — <code>filename.tsx:15</code></summary>
 
             Description of the minor issue.
 
             **Suggestion:** Quick fix.
 
-            ## What looks good
+            </details>
 
-            - Brief callout of things done well
+            _(If no issues found, write "No issues found — looks good!" and omit the table.)_
+
+            ## What Looks Good
+
+            | Area | Note |
+            |------|------|
+            | Area of code or pattern | Brief callout of what was done well |
+
+            ## Notes
+
+            Free-form observations, questions, or anything else worth mentioning that doesn't fit into the sections above (e.g., testing suggestions, potential future improvements, patterns noticed across the codebase). Omit this section if there's nothing to add.
             ```
 
             Severity prefixes:
@@ -148,6 +207,8 @@ jobs:
             - 🟡 for UX issues, architectural concerns, missing error handling
             - 🟢 for minor suggestions, style improvements, nice-to-haves
 
-            Use `---` horizontal rules between issues for visual separation. Use backtick code references for files, functions, and variables. Include short code snippets in fenced blocks when suggesting fixes. If no issues found, just write a short "Looks good" summary.
+            You MUST follow this exact format for every review — no exceptions. Number each issue sequentially. The summary table gives a scannable overview; the `<details>` blocks hold the full description and suggestion. Use backtick code references for files, functions, and variables. Include short code snippets in fenced blocks when suggesting fixes. Do not fall back to plain headers or bullet lists for issues or "What Looks Good".
 
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr review:*)"'
+          claude_args: >-
+            ${{ inputs.model && format('--model {0}', inputs.model) || '' }}
+            --allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr review:*),Bash(gh api:*)"
