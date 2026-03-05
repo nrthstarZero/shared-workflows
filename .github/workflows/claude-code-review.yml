@@ -134,80 +134,63 @@ jobs:
 
             This makes issues appear directly in the diff where authors will see them. Only use this for issues where you can identify a specific file and line number.
 
-            ## Review Output Format
+            ## Review Output Format — MANDATORY
 
-            You MUST structure your review body using this exact markdown format:
+            CRITICAL: Your review body MUST use proper GitHub-Flavored Markdown. This means:
+            - Use `## Heading` syntax for section headers (NOT plain text like "SUMMARY:" or "ISSUES:")
+            - Use GFM pipe tables with header rows and separator rows (NOT bullet lists)
+            - Use HTML `<details><summary>` blocks for collapsible issue details
+            - Use severity emoji prefixes: 🔴 🟡 🟢
 
-            ```markdown
-            ## Summary
+            DO NOT write plain text. DO NOT use bullet lists where tables are specified. DO NOT skip the table/details structure.
 
-            One sentence overview of the PR quality.
+            Your review body MUST contain these sections in this exact order:
 
-            **Verdict:** ✅ Approve _(or ❌ Request Changes — N critical issues)_
+            ### Section 1: Summary
+            Start with `## Summary` header, then one sentence overview, then a verdict line:
+            `**Verdict:** ✅ Approve` or `**Verdict:** ❌ Request Changes — N critical issues`
 
-            ## Previously Flagged
+            ### Section 2: Previously Flagged (omit if no prior reviews)
+            `## Previously Flagged` header, then a TABLE (not bullets):
+            `| Issue | Status |`
+            `|-------|--------|`
+            `| Description | ✅ Fixed |`
+            `| Description | ⏳ Still Open |`
 
-            | Issue | Status |
-            |-------|--------|
-            | Description of previous issue | ✅ Fixed |
-            | Description of previous issue | ⏳ Still Open |
+            ### Section 3: Issues
+            `## Issues` header, then a summary TABLE:
+            `| # | Severity | Category | File | Line | Title |`
+            `|---|----------|----------|------|------|-------|`
+            `| 1 | 🔴 | Bug | \`file.tsx\` | L42 | Title |`
 
-            _(If no previous reviews exist, omit this section.)_
+            Then for EACH issue, a collapsible details block:
+            `<details>`
+            `<summary><strong>1. 🔴 Bug: Title</strong> — <code>file.tsx:42</code></summary>`
+            `(blank line)`
+            `Description with line references.`
+            `(blank line)`
+            `**Suggestion:** Fix description with code snippet.`
+            `(blank line)`
+            `</details>`
 
-            ## Issues
+            If no issues, write "No issues found — looks good!" and skip the table.
 
-            | # | Severity | Category | File | Line | Title |
-            |---|----------|----------|------|------|-------|
-            | 1 | 🔴 | Bug | `filename.tsx` | L42 | Short title |
-            | 2 | 🟡 | UX | `filename.tsx` | L108 | Short title |
-            | 3 | 🟢 | Minor | `filename.tsx` | L15 | Short title |
+            Severity meanings:
+            - 🔴 = bugs, security issues, correctness problems
+            - 🟡 = UX issues, architectural concerns, missing error handling
+            - 🟢 = minor suggestions, nice-to-haves
 
-            <details>
-            <summary><strong>1. 🔴 Bug: Short title</strong> — <code>filename.tsx:42</code></summary>
+            ### Section 4: What Looks Good
+            `## What Looks Good` header, then a TABLE (not bullets):
+            `| Area | Note |`
+            `|------|------|`
+            `| Pattern or area | What was done well |`
 
-            Description of the bug with specific line references.
+            ### Section 5: Notes (optional, omit if nothing to add)
+            `## Notes` header, then free-form text for observations, questions, testing suggestions, or patterns noticed that don't fit above.
 
-            **Suggestion:** What to do instead, with a code snippet if helpful.
-
-            </details>
-
-            <details>
-            <summary><strong>2. 🟡 UX: Short title</strong> — <code>filename.tsx:108</code></summary>
-
-            Description of the UX concern.
-
-            **Suggestion:** Recommended fix.
-
-            </details>
-
-            <details>
-            <summary><strong>3. 🟢 Minor: Short title</strong> — <code>filename.tsx:15</code></summary>
-
-            Description of the minor issue.
-
-            **Suggestion:** Quick fix.
-
-            </details>
-
-            _(If no issues found, write "No issues found — looks good!" and omit the table.)_
-
-            ## What Looks Good
-
-            | Area | Note |
-            |------|------|
-            | Area of code or pattern | Brief callout of what was done well |
-
-            ## Notes
-
-            Free-form observations, questions, or anything else worth mentioning that doesn't fit into the sections above (e.g., testing suggestions, potential future improvements, patterns noticed across the codebase). Omit this section if there's nothing to add.
-            ```
-
-            Severity prefixes:
-            - 🔴 for bugs, security issues, correctness problems
-            - 🟡 for UX issues, architectural concerns, missing error handling
-            - 🟢 for minor suggestions, style improvements, nice-to-haves
-
-            You MUST follow this exact format for every review — no exceptions. Number each issue sequentially. The summary table gives a scannable overview; the `<details>` blocks hold the full description and suggestion. Use backtick code references for files, functions, and variables. Include short code snippets in fenced blocks when suggesting fixes. Do not fall back to plain headers or bullet lists for issues or "What Looks Good".
+            ### REMINDER
+            This format is non-negotiable. Every review MUST use markdown `##` headers, GFM pipe `|` tables, and HTML `<details>` blocks exactly as described. Plain text labels, bullet lists in place of tables, or missing structure will be considered a failure to follow instructions.
 
           claude_args: >-
             ${{ inputs.model && format('--model {0}', inputs.model) || '' }}
