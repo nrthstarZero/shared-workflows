@@ -149,7 +149,13 @@ jobs:
             3. **Suggestion line:** `**Suggestion:**` followed by the concrete fix.
             4. **Code block (when possible):** Use a `suggestion` fenced code block so GitHub renders a one-click "Apply suggestion" button.
 
-            DO NOT post inline comments as plain text paragraphs. Every inline comment MUST have the bold severity title line and a Suggestion line. This is non-negotiable.
+            Use proper GitHub-Flavored Markdown throughout every inline comment:
+            - Wrap all code references in backticks: function names, variable names, types, values, CLI flags, SQL keywords (e.g., `postgresql_using`, `VARCHAR`, `checkfirst=True`)
+            - Use **bold** for emphasis on key terms or warnings
+            - Use fenced code blocks (```) for multi-line code examples
+            - Keep paragraphs short — use blank lines to separate distinct points
+
+            DO NOT post inline comments as plain text paragraphs. Every inline comment MUST have the bold severity title line, use backticks for all code references, and include a Suggestion line. This is non-negotiable.
 
             ## Review Output Format — MANDATORY
 
