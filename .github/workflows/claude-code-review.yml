@@ -87,6 +87,15 @@ jobs:
             7. **Test Coverage** — Are new features/logic covered by tests?
             ${{ inputs.review_criteria }}
 
+            ## Writing Style — ALL Output
+
+            ALL text you write (review body, inline comments, everything) MUST use GitHub-Flavored Markdown:
+            - Wrap ALL code references in backticks: function names, variable names, types, values, CLI flags, SQL keywords, file paths (e.g., `postgresql_using`, `VARCHAR`, `checkfirst=True`, `src/utils.ts`)
+            - Use **bold** for emphasis on key terms, warnings, or important phrases
+            - Use fenced code blocks (```) for multi-line code examples
+            - Keep paragraphs short — use blank lines to separate distinct points
+            - NEVER write plain unformatted text. Every sentence should use backticks for any code reference it contains.
+
             ## Review Guidelines
 
             - **Be specific**: Reference file names, line numbers, and code snippets.
@@ -149,13 +158,7 @@ jobs:
             3. **Suggestion line:** `**Suggestion:**` followed by the concrete fix.
             4. **Code block (when possible):** Use a `suggestion` fenced code block so GitHub renders a one-click "Apply suggestion" button.
 
-            Use proper GitHub-Flavored Markdown throughout every inline comment:
-            - Wrap all code references in backticks: function names, variable names, types, values, CLI flags, SQL keywords (e.g., `postgresql_using`, `VARCHAR`, `checkfirst=True`)
-            - Use **bold** for emphasis on key terms or warnings
-            - Use fenced code blocks (```) for multi-line code examples
-            - Keep paragraphs short — use blank lines to separate distinct points
-
-            DO NOT post inline comments as plain text paragraphs. Every inline comment MUST have the bold severity title line, use backticks for all code references, and include a Suggestion line. This is non-negotiable.
+            DO NOT post inline comments as plain text paragraphs. Every inline comment MUST have the bold severity title line and a Suggestion line. This is non-negotiable.
 
             ## Review Output Format — MANDATORY
 
