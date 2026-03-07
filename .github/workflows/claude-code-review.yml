@@ -124,15 +124,32 @@ jobs:
 
             ```
             gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments \
-              -f body="🔴 **Bug: Short title**
+              -f body="$(cat <<'COMMENT_EOF'
+            **🔴 Bug: Short title**
 
-            Description and suggestion." \
+            Description of the problem with specific references to what the code does wrong.
+
+            **Suggestion:** Concrete fix description.
+
+            \`\`\`suggestion
+            corrected code here
+            \`\`\`
+            COMMENT_EOF
+            )" \
               -f path="src/filename.tsx" \
               -F line=42 \
               -f side="RIGHT"
             ```
 
-            This makes issues appear directly in the diff where authors will see them. Only use this for issues where you can identify a specific file and line number.
+            ### Inline Comment Format — MANDATORY
+
+            Every inline comment MUST follow this structure:
+            1. **First line:** Severity emoji + bold category + colon + short title (e.g., `**🔴 Bug: Missing USING clause**`)
+            2. **Body:** 1-3 sentences explaining the problem. Be specific about what goes wrong and why.
+            3. **Suggestion line:** `**Suggestion:**` followed by the concrete fix.
+            4. **Code block (when possible):** Use a `suggestion` fenced code block so GitHub renders a one-click "Apply suggestion" button.
+
+            DO NOT post inline comments as plain text paragraphs. Every inline comment MUST have the bold severity title line and a Suggestion line. This is non-negotiable.
 
             ## Review Output Format — MANDATORY
 
